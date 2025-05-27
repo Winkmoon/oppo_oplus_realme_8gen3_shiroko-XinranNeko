@@ -6,18 +6,18 @@ env:
   FEIL: 'oppo+oplus+realme'
   ANDROID_VERSION: 'android14'
   KERNEL_VERSION: '6.1'
-  KERNEL_NAME: 'android14-11-o-gca13bffobf09'
+  KERNEL_NAME: '8gen3_XinranNeko kernel'
   KERNELSU_VARIANT: 'SukiSU-Ultra'
   KERNELSU_BRANCH: 'susfs-dev'
 
 on:
   workflow_dispatch:
   # 取消此处注释代码可开启每日定时编译
-#  schedule:
-#    - cron: '0 23 * * *'  # UTC时间23点（北京时间次日7点）
+  schedule:
+    - cron: '0 23 * * *'  # UTC时间23点（北京时间次日7点）
     inputs:
       lz4k_enable:
-        description: '是否安装 LZ4K 补丁'
+        description: '安装 LZ4K 补丁'
         required: true
         type: choice
         default: 'true'
@@ -25,7 +25,7 @@ on:
           - 'true'
           - 'false'
       scx_enable:
-        description: '是否安装风驰内核驱动'
+        description: '安装风驰内核驱动'
         required: true
         type: choice
         default: 'true'
@@ -33,10 +33,10 @@ on:
           - 'true'
           - 'false'
       kernel_suffix:
-        description: '内核后缀(留空默认,开头别加连字符)'
+        description: '内核后缀'
         required: false
         type: string
-        default: ''
+        default: 'XinranNeko kernel'
 
 jobs:
   build:
@@ -64,11 +64,11 @@ jobs:
           sudo chmod +x llvm.sh
           sudo sudo ./llvm.sh 20 all
 
-      - name: 初始化源码仓库
+      - name: 初始化私有的源码仓库
         run: |
           rm -rf kernel_workspace && mkdir kernel_workspace && cd kernel_workspace
           echo "正在克隆源码仓库..."
-          git clone --depth=1 https://github.com/cctv18/android_kernel_common_oneplus_sm8650 -b oneplus/sm8650_u_14.0.0_oneplus12 common
+          git clone --depth=1 https://github.com/Winkmoon/android_kernel_oneplus_sm8650 -b oneplus/sm8650_u_14.0.0_oneplus12 common
           echo "正在去除 ABI 保护 & 去除 dirty 后缀..."
           rm common/android/abi_gki_protected_exports_* || true
           for f in common/scripts/setlocalversion; do
@@ -126,7 +126,7 @@ jobs:
           cd kernel_workspace
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -135,7 +135,7 @@ jobs:
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -173,7 +173,7 @@ jobs:
             done
           fi
            
-      - name: 构建内核
+      - name: 修复风驰并构建内核
         run: |
           cd kernel_workspace
           if [[ ${{ github.event.inputs.scx_enable }} == "true" ]]; then
@@ -261,24 +261,22 @@ jobs:
           tag_name: "${{ env.TAG_HEAD }}-${{ env.TIME }}"
           name: "${{ env.TAG_HEAD }}-${{ env.FULL_VERSION }}"
           body: |
-            ### 📱 欧加真 Android 14 SukiSU-Ultra SM8650 通用内核 | 构建信息
+            ### 欧加真 A14 SukiSU-Ultra SM8650 通用内核 | 构建信息
             - 内核版本号: ${{ env.FULL_VERSION }}
             - 编译时间: ${{ env.TIME_FORM }}
             - 机型：欧加真骁龙8Gen3 6.1 Android 14内核通用（基于一加12 Android 14 版官方OKI源码）
             - 特性：SukiSU Ultra + SUSFS + VFS + KPM
             - LZ4K支持：${{ github.event.inputs.lz4k_enable }}
             - 风驰内核支持：${{ github.event.inputs.scx_enable }}
-            - 推荐系统：ColorOS 14 / RealmeUI 5.0
             - SukiSU管理器下载：[SukiSU-Ultra](https://github.com/ShirkNeko/SukiSU-Ultra/releases)
-            ### ⏫️ 更新内容：
+            ### update内容：
             - 更新SukiSU Ultra至最新版本（${{ needs.build.outputs.ksuver }}）
-            - (预留)
-            ### 📋 安装方法 | Installation Guide
-            1. 若你的手机已经安装了第三方Recovery（如TWRP)，可下载对应机型的AnyKernel刷机包后进入Recovery模式，通过Recovery刷入刷机包后重启设备
-            2. 若你的手机之前已有 root 权限，可在手机上安装[HorizonKernelFlasher](https://github.com/libxzr/HorizonKernelFlasher/releases)，在HorizonKernelFlasher中刷入AnyKernel刷机包并重启
+            ###  安装方法 | Installation Guide
+            1. 第三方Recovery（如TWRP)，下载AnyKernel zip包后进入Recovery模式，通过Recovery刷入zip包后重启设备
+            2. 你的手机之前已有 root 权限，可在手机上安装[HorizonKernelFlasher](https://github.com/libxzr/HorizonKernelFlasher/releases)，在HorizonKernelFlasher中刷入AnyKernel刷机包并重启
             3. 若你之前已刷入SukiSU Ultra内核，且SukiSU Ultra管理器已更新至最新版本，可在SukiSU Ultra管理器中直接刷入AnyKernel刷机包并重启
-            ※※※刷写内核有风险，为防止出现意外导致手机变砖，在刷入内核前请务必用[KernelFlasher](https://github.com/capntrips/KernelFlasher)等软件备份boot等关键启动分区!※※※
+            刷写内核有风险，为防止出现意外导致手机变砖，在刷入内核前请备份boot等关键启动分区!
           draft: false
           prerelease: false
           files: |
-            release_zips/AnyKernel3_*.zip
+            release_zips/AnyKernel3_ShirokoNekokernel_*.zip

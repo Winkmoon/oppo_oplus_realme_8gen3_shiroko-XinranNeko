@@ -34,7 +34,7 @@ on:
         description: '内核后缀'
         required: false
         type: string
-        default: 'XinranNeko kernel'
+        default: ''
 
 jobs:
   build:
